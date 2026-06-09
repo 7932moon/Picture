@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon JunSeo Photography</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Cormorant+Garamond:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body { background: #fff; color: #111; font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Cormorant Garamond', serif; }
+        .hero-overlay { background: rgba(0,0,0,0.25); }
+        
+        /* Fade Up Animation */
+        .fade-up { opacity: 0; transform: translateY(30px); transition: 0.8s ease-out; }
+        .fade-up.show { opacity: 1; transform: translateY(0); }
+
+        /* Filter Buttons */
+        .filter-btn { transition: color 0.3s; position: relative; }
+        .filter-btn::after {
+            content: ''; position: absolute; width: 0; height: 1px; bottom: -4px; left: 0; 
+            background-color: #000; transition: width 0.3s;
+        }
+        .filter-btn.active { color: #000; font-weight: 500; }
+        .filter-btn.active::after { width: 100%; }
+
+        /* Map overriding to fix z-index issues with sticky header */
+        .leaflet-container { z-index: 10 !important; font-family: 'Inter', sans-serif; }
+        .leaflet-popup-content-wrapper { border-radius: 0; }
+        
+        /* 구글 맵을 포트폴리오 톤에 맞게 흑백 처리하여 깔끔하게 표시 */
+        .leaflet-tile-pane { filter: grayscale(100%) opacity(0.8); }
+    </style>
+</head>
+<body>
+
+    <header id="header" class="fixed top-0 left-0 w-full z-50 transition-all duration-300">
+        <div class="flex justify-between items-center px-8 md:px-12 py-8">
+            <a href="#" class="logo text-white text-xs uppercase tracking-[0.5em]">Moon JunSeo</a>
+            <nav class="hidden md:flex gap-10">
+                <a href="#work" class="menu-link text-white text-xs uppercase tracking-[0.3em] hover:opacity-70 transition-opacity">Work</a>
+                <a href="#map" class="menu-link text-white text-xs uppercase tracking-[0.3em] hover:opacity-70 transition-opacity">Map</a>
+                <a href="#about" class="menu-link text-white text-xs uppercase tracking-[0.3em] hover:opacity-70 transition-opacity">About</a>
+                <a href="#contact" class="menu-link text-white text-xs uppercase tracking-[0.3em] hover:opacity-70 transition-opacity">Contact</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="h-screen relative overflow-hidden">
+        <img src="https://images.unsplash.com/photo-1493863641943-9b68992a8d07?q=80&w=2000" alt="Hero" class="absolute inset-0 w-full h-full object-cover">
+        <div class="absolute inset-0 hero-overlay"></div>
+        <div class="relative z-10 h-full flex items-center justify-center">
+            <div class="text-center text-white fade-up show">
+                <h1 class="text-6xl md:text-8xl font-light tracking-wide">Moon JunSeo</h1>
+                <p class="mt-6 uppercase tracking-[0.4em] text-xs">Photography Portfolio</p>
+            </div>
+        </div>
+        
+        <!-- 아래로 스크롤 유도 화살표 및 텍스트 -->
+        <a href="#work" class="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 text-white opacity-70 hover:opacity-100 transition-opacity duration-300 animate-bounce flex flex-col items-center gap-2 select-none">
+            <span class="text-[9px] uppercase tracking-[0.3em] font-light">Scroll</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+        </a>
+    </section>
+
+    <section id="work" class="py-24 bg-gray-50 min-h-screen">
+        <div class="w-[90%] mx-auto">
+            <!-- Filter Nav (Genre & Country Dropdown in Single Row) -->
+            <div class="flex flex-wrap justify-center items-center gap-6 text-xs uppercase tracking-[0.2em] text-gray-400 mb-16 select-none">
+                <span class="text-gray-300 font-medium text-[10px]">Genre /</span>
+                <button class="filter-btn active hover:text-black" onclick="filterByGenre('all', this)">All</button>
+                <button class="filter-btn hover:text-black" onclick="filterByGenre('architecture', this)">Architecture</button>
+                <button class="filter-btn hover:text-black" onclick="filterByGenre('landscape', this)">Landscape</button>
+                <button class="filter-btn hover:text-black" onclick="filterByGenre('interior', this)">Interior</button>
+                <button class="filter-btn hover:text-black" onclick="filterByGenre('city', this)">City</button>
+                
+                <span class="text-gray-200">|</span>
+                
+                <!-- Country Dropdown next to City -->
+                <div class="relative inline-block text-left" id="country-dropdown-container">
+                    <button id="country-btn" onclick="toggleCountryDropdown(event)" class="filter-btn hover:text-black flex items-center gap-1">
+                        <span id="selected-country-text">Country</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-300 transform" id="dropdown-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    
+                    <!-- Dropdown Menu Options -->
+                    <div id="country-dropdown-menu" class="hidden absolute left-1/2 -translate-x-1/2 mt-3 w-40 bg-white border border-gray-100 shadow-xl py-2 z-30 transition-all duration-200 origin-top scale-95 opacity-0">
+                        <button onclick="selectCountry('all', 'Country', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">All Countries</button>
+                        <button onclick="selectCountry('대한민국', '대한민국', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">대한민국</button>
+                        <button onclick="selectCountry('미국', '미국', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">미국</button>
+                        <button onclick="selectCountry('스위스', '스위스', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">스위스</button>
+                        <button onclick="selectCountry('아이슬란드', '아이슬란드', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">아이슬란드</button>
+                        <button onclick="selectCountry('일본', '일본', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">일본</button>
+                        <button onclick="selectCountry('프랑스', '프랑스', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">프랑스</button>
+                        <button onclick="selectCountry('영국', '영국', this)" class="block w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-600 hover:text-black transition-colors">영국</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gallery Grid (4 columns) -->
+            <div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-500">
+                <!-- JavaScript로 사진이 주입됩니다 -->
+            </div>
+        </div>
+    </section>
+
+    <section id="map" class="py-24 fade-up">
+        <div class="w-[90%] mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-5xl mb-4">촬영 장소</h2>
+                <p class="text-gray-500 tracking-widest text-xs uppercase">빛이 머물던 곳</p>
+            </div>
+            <!-- Map Container -->
+            <div id="map-container" class="w-full h-[600px] bg-gray-200 shadow-sm border border-gray-100"></div>
+        </div>
+    </section>
+
+    <section id="about" class="py-32 fade-up bg-gray-50">
+        <div class="max-w-xl mx-auto text-center px-8">
+            <h2 class="text-5xl mb-10">About</h2>
+            <p class="text-gray-600 leading-8">Based in Busan, studying photography with a primary focus on capturing landscapes and architectural structures.</p>
+        </div>
+    </section>
+
+    <footer id="contact" class="py-24 border-t border-gray-100 fade-up">
+        <div class="text-center">
+            <a href="mailto:mjs381@naver.com" class="font-serif text-3xl block hover:opacity-70 transition-opacity">mjs381@naver.com</a>
+            <a href="tel:010-4240-7932" class="font-serif text-2xl text-gray-600 block mt-4 hover:text-black transition-colors">010-4240-7932</a>
+            
+            <div class="flex justify-center gap-10 mt-10 text-sm">
+                <a href="https://www.instagram.com/moonon_6" target="_blank" rel="noopener noreferrer" class="hover:underline flex items-center gap-2 text-gray-800 hover:text-black">
+                    <!-- Instagram SVG Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                    Instagram
+                </a>
+            </div>
+            <p class="mt-12 text-xs text-gray-400 tracking-widest uppercase">© 2026 Moon JunSeo</p>
+        </div>
+    </footer>
+
+    <!-- Lightbox Layout with Navigation Arrows and Page Indicator -->
+    <div id="lightbox" class="fixed inset-0 bg-white/95 hidden z-[999] flex items-center justify-center cursor-pointer opacity-0 transition-opacity duration-300" onclick="closeLightbox()">
+        
+        <!-- Left Arrow (Prev Photo) -->
+        <button id="prevBtn" onclick="prevImage(event)" class="absolute left-6 md:left-12 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full hover:bg-black/5 active:scale-95 transition-all z-20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 stroke-black fill-none" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+        </button>
+
+        <!-- Right Arrow (Next Photo) -->
+        <button id="nextBtn" onclick="nextImage(event)" class="absolute right-6 md:right-12 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full hover:bg-black/5 active:scale-95 transition-all z-20">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 stroke-black fill-none" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+        </button>
+
+        <!-- Image Display Area -->
+        <div class="relative max-w-[90vw] max-h-[80vh] flex flex-col items-center" onclick="event.stopPropagation()">
+            <img id="lightboxImg" class="max-w-full max-h-[75vh] object-contain shadow-lg transform scale-95 transition-all duration-300">
+        </div>
+
+        <!-- Caption & Interactive Indicators -->
+        <div class="absolute bottom-10 flex flex-col items-center gap-2 text-black text-center select-none" onclick="event.stopPropagation()">
+            <div id="lightboxCaption" class="tracking-widest text-sm uppercase font-medium"></div>
+            <div id="imageIndicator" class="text-xs text-gray-500 tracking-wider"></div>
+        </div>
+    </div>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // =========================================================================
+        // [사진 등록 및 정보 수정 안내]
+        // 1. 로컬 이미지 사용 시: portfolio.html과 같은 위치에 'images' 폴더를 만들고 
+        //    그 안에 사진을 넣은 뒤 "images/my_photo1.jpg" 형태로 작성하세요.
+        // 2. 외부 링크 사용 시: "https://..." 로 시작하는 이미지 URL을 그대로 적어주세요.
+        // 3. 다각도 사진: images: [...] 배열 안에 여러 장을 넣으면 라이트박스에서 화살표로 넘겨볼 수 있습니다.
+        // =========================================================================
+        const photos = [
+            { 
+                id: 1, 
+                images: [
+                    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c", // 1번 장소 - 메인 뷰 (대표 이미지)
+                    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c", // 1번 장소 - 두 번째 각도
+                    "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b"  // 1번 장소 - 세 번째 각도
+                ], 
+                location: "대한민국, 서울 (모던 건축물)", 
+                category: "architecture", // 분류: architecture, landscape, interior, city
+                country: "대한민국",      // 국가 검색용: 대한민국, 미국, 스위스, 아이슬란드, 일본, 프랑스, 영국 등
+                lat: 37.5673,             // 지도용 위도
+                lng: 127.0091             // 지도용 경도
+            },
+            { 
+                id: 2, 
+                images: [
+                    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab", 
+                    "https://images.unsplash.com/photo-1449034446853-66c86144b0ad"
+                ], 
+                location: "미국, 뉴욕 (마천루)", 
+                category: "architecture", 
+                country: "미국",
+                lat: 40.7128, 
+                lng: -74.0060 
+            },
+            { 
+                id: 3, 
+                images: [
+                    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b"
+                ], 
+                location: "스위스, 알프스", 
+                category: "landscape", 
+                country: "스위스",
+                lat: 46.5601, 
+                lng: 7.9790 
+            },
+            { 
+                id: 4, 
+                images: [
+                    "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05"
+                ], 
+                location: "아이슬란드", 
+                category: "landscape", 
+                country: "아이슬란드",
+                lat: 64.9631, 
+                lng: -19.0208 
+            },
+            { 
+                id: 5, 
+                images: [
+                    "https://images.unsplash.com/photo-1497366216548-37526070297c",
+                    "https://images.unsplash.com/photo-1497366811353-6870744d04b2"
+                ], 
+                location: "일본, 도쿄 (사무 공간)", 
+                category: "interior", 
+                country: "일본",
+                lat: 35.6762, 
+                lng: 139.6503 
+            },
+            { 
+                id: 6, 
+                images: [
+                    "https://images.unsplash.com/photo-1505691938895-1758d7feb511"
+                ], 
+                location: "프랑스, 파리 (박물관 내부)", 
+                category: "interior", 
+                country: "프랑스",
+                lat: 48.8606, 
+                lng: 2.3376 
+            },
+            { 
+                id: 7, 
+                images: [
+                    "https://images.unsplash.com/photo-1516483638261-f4dbaf036963",
+                    "https://images.unsplash.com/photo-1538481199705-c710c4e965fc"
+                ], 
+                location: "대한민국, 서울의 밤", 
+                category: "city", 
+                country: "대한민국",
+                lat: 37.5519, 
+                lng: 126.9918 
+            },
+            { 
+                id: 8, 
+                images: [
+                    "https://images.unsplash.com/photo-1506744038136-46273834b3fb"
+                ], 
+                location: "영국, 런던", 
+                category: "city", 
+                country: "영국",
+                lat: 51.5074, 
+                lng: -0.1278 
+            }
+            /* 새로운 사진을 추가하고 싶다면 아래 주석을 풀고 양식에 맞추어 추가해주시면 됩니다.
+            ,{ 
+                id: 9, 
+                images: [
+                    "images/photo_09_main.jpg",
+                    "images/photo_09_sub.jpg"
+                ], 
+                location: "대한민국, 부산 (바다)", 
+                category: "landscape", 
+                country: "대한민국",
+                lat: 35.1531, 
+                lng: 129.1189 
+            }
+            */
+        ];
+
+        const gallery = document.getElementById('gallery');
+        
+        // 이중 필터링 상태 변수
+        let activeGenre = 'all';
+        let activeCountry = 'all';
+        
+        function renderGallery() {
+            gallery.style.opacity = '0'; // 페이드아웃 효과 시작
+            
+            setTimeout(() => {
+                gallery.innerHTML = ''; // 초기화
+                
+                // 장르 조건과 국가 조건이 동시에 만족하는 사진만 선별
+                const filteredPhotos = photos.filter(photo => {
+                    const matchesGenre = (activeGenre === 'all' || photo.category === activeGenre);
+                    const matchesCountry = (activeCountry === 'all' || photo.country === activeCountry);
+                    return matchesGenre && matchesCountry;
+                });
+
+                if (filteredPhotos.length === 0) {
+                    gallery.innerHTML = `
+                        <div class="col-span-full py-24 text-center">
+                            <p class="text-gray-400 text-sm tracking-widest uppercase font-light">선택하신 조건의 사진을 찾을 수 없습니다.</p>
+                        </div>`;
+                } else {
+                    filteredPhotos.forEach(photo => {
+                        gallery.innerHTML += `
+                            <div class="relative group aspect-[4/5] overflow-hidden bg-gray-200 cursor-pointer" onclick="openLightbox(${photo.id})">
+                                <img src="${photo.images[0]}?q=80&w=600" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy">
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center">
+                                    <span class="text-white font-serif text-lg tracking-widest text-center px-4">${photo.location}</span>
+                                </div>
+                            </div>`;
+                    });
+                }
+                
+                gallery.style.opacity = '1'; // 페이드인 효과
+            }, 300);
+        }
+
+        // 장르 카테고리 필터 버튼 클릭 이벤트
+        function filterByGenre(category, element) {
+            document.querySelectorAll('#work .filter-btn').forEach(btn => {
+                if (btn.id !== 'country-btn') {
+                    btn.classList.remove('active', 'text-black');
+                }
+            });
+            element.classList.add('active', 'text-black');
+            activeGenre = category;
+            renderGallery();
+        }
+
+        // 드롭다운 토글 제어
+        function toggleCountryDropdown(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('country-dropdown-menu');
+            const arrow = document.getElementById('dropdown-arrow');
+            const isHidden = menu.classList.contains('hidden');
+            
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                setTimeout(() => {
+                    menu.classList.remove('scale-95', 'opacity-0');
+                    menu.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                arrow.classList.add('rotate-180');
+            } else {
+                closeCountryDropdown();
+            }
+        }
+
+        function closeCountryDropdown() {
+            const menu = document.getElementById('country-dropdown-menu');
+            const arrow = document.getElementById('dropdown-arrow');
+            if (!menu || menu.classList.contains('hidden')) return;
+            
+            menu.classList.remove('scale-100', 'opacity-100');
+            menu.classList.add('scale-95', 'opacity-0');
+            arrow.classList.remove('rotate-180');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 150);
+        }
+
+        // 국가 드롭다운에서 선택 시 필터 적용
+        function selectCountry(country, label, element) {
+            const countryBtn = document.getElementById('country-btn');
+            const textSpan = document.getElementById('selected-country-text');
+            
+            textSpan.innerText = label;
+            activeCountry = country;
+            
+            if (country !== 'all') {
+                countryBtn.classList.add('active', 'text-black');
+            } else {
+                countryBtn.classList.remove('active', 'text-black');
+            }
+            
+            closeCountryDropdown();
+            renderGallery();
+        }
+
+        // 화면 클릭 시 드롭다운 닫기
+        window.addEventListener('click', () => {
+            closeCountryDropdown();
+        });
+
+        // 초기 렌더링
+        renderGallery();
+
+        // 헤더 스크롤 색상 변경
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('header');
+            const isScrolled = window.scrollY > 100;
+            header.classList.toggle('bg-white', isScrolled);
+            header.classList.toggle('shadow-sm', isScrolled);
+            document.querySelectorAll('.menu-link, .logo').forEach(el => {
+                el.classList.toggle('text-black', isScrolled);
+                el.classList.toggle('text-white', !isScrolled);
+            });
+        });
+
+        // 라이트박스 다각도 슬라이드 상태 제어 변수
+        let currentPhotoId = null;
+        let currentSubIndex = 0;
+
+        // 라이트박스 열기
+        function openLightbox(photoId) {
+            const photo = photos.find(p => p.id === photoId);
+            if (!photo) return;
+
+            currentPhotoId = photoId;
+            currentSubIndex = 0;
+
+            updateLightboxContent();
+
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('hidden');
+            
+            // Fade In 애니메이션
+            setTimeout(() => {
+                lightbox.classList.remove('opacity-0');
+                document.getElementById('lightboxImg').classList.remove('scale-95');
+            }, 10);
+            
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 라이트박스 이미지 및 메타데이터 실시간 업데이트
+        function updateLightboxContent() {
+            const photo = photos.find(p => p.id === currentPhotoId);
+            if (!photo) return;
+
+            const img = document.getElementById('lightboxImg');
+            const caption = document.getElementById('lightboxCaption');
+            const indicator = document.getElementById('imageIndicator');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            // 이미지 변경 전 부드러운 전환을 위한 투명도 변경
+            img.style.opacity = '0.7';
+
+            setTimeout(() => {
+                // 이미지 소스 매핑 및 캡션 작성
+                img.src = photo.images[currentSubIndex];
+                caption.innerText = photo.location;
+
+                // 사진이 여러 장일 때만 화살표와 인디케이터 표시
+                if (photo.images.length > 1) {
+                    indicator.innerText = `${currentSubIndex + 1} / ${photo.images.length}`;
+                    prevBtn.style.display = 'flex';
+                    nextBtn.style.display = 'flex';
+                } else {
+                    indicator.innerText = '';
+                    prevBtn.style.display = 'none';
+                    nextBtn.style.display = 'none';
+                }
+                img.style.opacity = '1';
+            }, 100);
+        }
+
+        // 이전 이미지 보기
+        function prevImage(event) {
+            if (event) event.stopPropagation(); // 라이트박스가 닫히지 않도록 버블링 방지
+            const photo = photos.find(p => p.id === currentPhotoId);
+            if (!photo) return;
+
+            if (currentSubIndex > 0) {
+                currentSubIndex--;
+            } else {
+                currentSubIndex = photo.images.length - 1; // 마지막 사진으로 루프
+            }
+            updateLightboxContent();
+        }
+
+        // 다음 이미지 보기
+        function nextImage(event) {
+            if (event) event.stopPropagation(); // 라이트박스가 닫히지 않도록 버블링 방지
+            const photo = photos.find(p => p.id === currentPhotoId);
+            if (!photo) return;
+
+            if (currentSubIndex < photo.images.length - 1) {
+                currentSubIndex++;
+            } else {
+                currentSubIndex = 0; // 첫 번째 사진으로 루프
+            }
+            updateLightboxContent();
+        }
+
+        // 라이트박스 닫기
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            const img = document.getElementById('lightboxImg');
+            
+            lightbox.classList.add('opacity-0');
+            img.classList.add('scale-95');
+            
+            setTimeout(() => {
+                lightbox.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }, 300);
+        }
+
+        // 키보드 내비게이션 연동 (←, → 방향키 및 ESC 키)
+        document.addEventListener('keydown', (e) => {
+            const lightbox = document.getElementById('lightbox');
+            if (lightbox.classList.contains('hidden')) return;
+
+            if (e.key === 'Escape') {
+                closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+                prevImage();
+            } else if (e.key === 'ArrowRight') {
+                nextImage();
+            }
+        });
+
+        // 스크롤 시 Fade Up 애니메이션
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('show'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+        // 페이지 로드 완료 후 지도 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            const map = L.map('map-container', {
+                scrollWheelZoom: false
+            }).setView([30, 0], 2); 
+
+            // 한국어가 적용되는 타일 레이어 (무채색 필터 적용)
+            L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=ko&x={x}&y={y}&z={z}', {
+                attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+                maxZoom: 19
+            }).addTo(map);
+
+            // 지도 상에 위치 마커 찍기 및 팝업 설정
+            photos.forEach(photo => {
+                const marker = L.marker([photo.lat, photo.lng]).addTo(map);
+                
+                // 마커 클릭 시 보여주는 인포 팝업 구조
+                const popupContent = `
+                    <div style="text-align:center; padding-top:5px;">
+                        <p style="margin: 0 0 8px 0; font-family: 'Cormorant Garamond', serif; font-size: 16px;">${photo.location}</p>
+                        <img src="${photo.images[0]}?q=60&w=200" 
+                             style="width: 150px; height: 100px; object-fit: cover; border-radius: 2px; cursor: pointer;" 
+                             onclick="openLightbox(${photo.id})"
+                             alt="${photo.location}">
+                    </div>
+                `;
+                marker.bindPopup(popupContent);
+            });
+        });
+    </script>
+</body>
+</html>
