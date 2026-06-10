@@ -241,11 +241,49 @@
                     "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c", // 다른 각도 1
                     "https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b"  // 다른 각도 2
                 ], 
-                location: "대한민국, 서울 (모던 건축물)", 
-                category: "architecture", 
-                country: "대한민국",
-                lat: 37.5673, 
-                lng: 127.0091 
+                location: "미국,뉴욕", 
+                category: "landscape", 
+                country: "미국           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 stroke-black fill-none" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+        </button>
+
+        <!-- Image Display Area -->
+        <div class="relative max-w-[90vw] max-h-[80vh] flex flex-col items-center" onclick="event.stopPropagation()">
+            <img id="lightboxImg" class="max-w-full max-h-[75vh] object-contain shadow-lg transform scale-95 transition-all duration-300">
+        </div>
+
+        <!-- Caption & Interactive Indicators -->
+        <div class="absolute bottom-10 flex flex-col items-center gap-2 text-black text-center select-none" onclick="event.stopPropagation()">
+            <div id="lightboxCaption" class="tracking-widest text-sm uppercase font-medium"></div>
+            <div id="imageIndicator" class="text-xs text-gray-500 tracking-wider"></div>
+        </div>
+    </div>
+
+    <!-- Leaflet Map JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // =========================================================================
+        // [사진 등록 및 정보 수정 안내]
+        // 1. 새 사진을 업로드할 때는 이 photos 배열의 '가장 아래에' 추가해 주시면 됩니다.
+        // 2. 이 웹사이트는 ID(최신 업로드 순)를 기준으로 '자동으로 역순 정렬'하여 맨 첫 장에 최신작을 띄워줍니다!
+        // =========================================================================
+        const photos = [
+            { 
+                id: 1, 
+                images: [
+                    "images/IMG_4625.JPG",
+                    "images/IMG_4639.JPG",
+                    "images/IMG_4696.JPG",
+                    "images/IMG_4703.JPG",
+                    "images/IMG_4678.JPG"
+                ], 
+                location: "미국,뉴욕", 
+                category: "landscape", 
+                country: "미국",
+                lat: 40.730610, 
+                lng: -73.935242
             },
             { 
                 id: 2, 
